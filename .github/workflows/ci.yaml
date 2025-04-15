@@ -27,8 +27,8 @@ jobs:
     runs-on: ubuntu-latest
 
     environment:
-      name: ${{ github.event.inputs.ENVIRONMENT }}
-    if: ${{ github.event.inputs.ENVIRONMENT == 'Dev-Test' }}
+      name: ${{ github.event.inputs.environment }}
+    if: ${{ github.event.inputs.environment == 'Dev-Test' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -86,8 +86,8 @@ jobs:
       AWS_DEFAULT_REGION: ap-southeast-2
 
     environment:
-      name: ${{ github.event.inputs.ENVIRONMENT }}
-    if: ${{ github.event.inputs.ENVIRONMENT == 'Dev-Deploy' }}
+      name: ${{ github.event.inputs.environment }}
+    if: ${{ github.event.inputs.environment == 'Dev-Deploy' }}
 
     runs-on: ubuntu-latest
     steps:
