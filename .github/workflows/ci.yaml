@@ -59,9 +59,18 @@ jobs:
         run: |
           ./test.sh
 
-      - name: Diff AWS CDK Stack
+      - name: Diff AWS CDK Stack for Dev
+        env:
+          ENVIRONMENT: dev
         run: |
           npx cdk diff --require-approval never --no-asset-metadata --no-change-set
+
+      - name: Diff AWS CDK Stack for Prod
+        env:
+          ENVIRONMENT: prod
+        run: |
+          echo "Prod not implemented yet"
+          # npx cdk diff --require-approval never --no-asset-metadata --no-change-set
 
   manual-job:
     needs: test
