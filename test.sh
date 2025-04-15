@@ -6,9 +6,15 @@
 
 # Check if the script is run from the root directory
 if [[ ! -f "requirements.txt" ]]; then
-    echo "Please run this script from the root directory of the project."
+    echo -e "${RED}Please run this script from the root directory of the project.${NC}"
     exit 1
 fi
+
+# Setup colors for titles and errors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+PINK='\033[38;5;225m'
+NC='\033[0m' # No color
 
 sudo apt-get install shellcheck >/dev/null
 
@@ -21,39 +27,39 @@ pip install -r requirements.txt >/dev/null
 failure_flag=0
 
 # Run bandit
-echo "----------------------------------------"
-echo "Running bandit..."
+echo -e "----------------------------------------${PINK}"
+echo -e "Running bandit...${NC}"
 bandit -c pyproject.toml -r .
 if [[ $? -ne 0 ]]; then
-    echo "Bandit check failed."
+    echo -e "${RED}Bandit check failed.${NC}"
     failure_flag=1
 fi
 
 # Run ruff
-echo "----------------------------------------"
-echo "Running ruff..."
+echo -e "----------------------------------------${PINK}"
+echo -e "Running ruff...${NC}"
 ruff check .
 if [[ $? -ne 0 ]]; then
-    echo "Ruff check failed."
+    echo -e "${RED}Ruff check failed.${NC}"
     failure_flag=1
 fi
 
 # Run yamllint
-echo "----------------------------------------"
-echo "Running yamllint..."
+echo -e "----------------------------------------${PINK}"
+echo -e "Running yamllint...${NC}"
 yamllint -c yamllint.yaml .
 if [[ $? -ne 0 ]]; then
-    echo "Yamllint check failed."
+    echo -e "${RED}Yamllint check failed.${NC}"
     failure_flag=1
 fi
 
 # Run shellcheck
-echo "----------------------------------------"
-echo "Running shellcheck..."
+echo -e "----------------------------------------${PINK}"
+echo -e "Running shellcheck...${NC}"
 while read -r file; do
     shellcheck "${file}"
     if [[ $? -ne 0 ]]; then
-        echo "Shellcheck failed for file: ${file}"
+        echo -e "${RED}Shellcheck failed for file: ${file}${NC}"
         failure_flag=1
     fi
 done < <(find ./ -type f -name "*.sh" \
@@ -64,16 +70,16 @@ done < <(find ./ -type f -name "*.sh" \
     -not -path "./.pytest_cache/*" \
     -not -path "./tests/*")
 
-echo "----------------------------------------"
+echo -e "${NC}----------------------------------------"
 
 # Deactivate virtual environment
 deactivate
 
 # Check if any failures occurred
 if [[ ${failure_flag} -ne 0 ]]; then
-    echo "One or more checks failed."
+    echo -e "${RED}One or more checks failed.${NC}"
     exit 1
 else
-    echo "All checks passed successfully."
+    echo -e "${GREEN}All checks passed successfully.${NC}"
     exit 0
 fi
