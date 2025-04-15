@@ -7,7 +7,7 @@ on:
       - main
   workflow_dispatch:
     inputs:
-      ENVIRONMENT:
+      environment:
         description: 'Environment to deploy to'
         required: true
         default: 'Dev-Test'
