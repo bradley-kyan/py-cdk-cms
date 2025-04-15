@@ -1,7 +1,9 @@
-from .ecr_manager_stack import ECRManagerStack
-from .vpc_stack import VPCStack
-from .ecs_stack import ECSStack
-from .dynamo_db_stack import DynamoDBStack
+from py_cdk_cms import (
+    ecr_manager_stack,
+    vpc_stack,
+    ecs_stack,
+    dynamo_db_stack,
+)
 
 __all__ = [
     "dynamo_db_stack",

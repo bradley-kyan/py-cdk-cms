@@ -1,0 +1,52 @@
+---
+run-name: CI for ${{ github.event.repository.name }}
+on:
+  pull_request:
+    branches:
+      - master
+      - main
+
+jobs:
+  build:
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup NPM
+        uses: actions/setup-node@v3
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: 'package.json'
+
+      - name: Install NPM dependencies
+        run: |
+          npm install
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+      - run: |
+          python3 -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: GitLeaks
+        uses: gitleaks/gitleaks-action@v2
+
+      - name: Run Tests
+        run: |
+          ./test.sh
+
+      - name: Diff AWS CDK Stacks
+        run: |
+          npm run cdk -- diff --all
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ap-southeast-2
+          AWS_DEFAULT_REGI  ON: ap-southeast-2

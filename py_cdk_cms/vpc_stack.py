@@ -1,15 +1,11 @@
 from aws_cdk import (
     Stack,
     aws_ec2 as ec2,
-    aws_ecs as ecs,
-    aws_iam as iam,
-    aws_logs as logs,
-    aws_ecr as ecr,
-    aws_ecs_patterns as ecs_patterns,
 )
 import aws_cdk as cdk
 
 from constructs import Construct
+
 
 class VPCStack(Stack):
     """
@@ -18,12 +14,12 @@ class VPCStack(Stack):
     Public subnets are used for load balancers and NAT gateways,
     while private subnets are used for ECS tasks and RDS instances.
     """
-    
+
     vpc: ec2.Vpc
-    
+
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
-        
+
         self.vpc = ec2.Vpc(
             self,
             "cms_vpc",
@@ -48,9 +44,8 @@ class VPCStack(Stack):
                     cidr_mask=24,
                 ),
             ],
-            
         )
-        
+
         self.vpc_output = cdk.CfnOutput(
             self,
             "VpcId",
@@ -58,8 +53,3 @@ class VPCStack(Stack):
             description="VPC ID",
             export_name="VPC-ID",
         )
-        
-        
-        
-        
-    
