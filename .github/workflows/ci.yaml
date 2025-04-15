@@ -5,8 +5,16 @@ on:
     branches:
       - master
       - main
-  workflow_dispatch: # Allows manual triggering of the workflow
-
+  workflow_dispatch:
+    inputs:
+      ENVIRONMENT:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - prod
 jobs:
   test:
     permissions: write-all
@@ -51,22 +59,14 @@ jobs:
         run: |
           ./test.sh
 
-      - name: Diff AWS CDK Stacks For Dev
-        env:
-          ENVIRONMENT: dev
+      - name: Diff AWS CDK Stack
         run: |
           npx cdk diff --require-approval never --no-asset-metadata --no-change-set
-      
-      - name: Diff AWS CDK Stacks For Prod
-        env:
-          ENVIRONMENT: prod
-        run: |
-          npx cdk diff --require-approval never --no-asset-metadata --no-change-set
-    
+
   manual-job:
-    needs: test # This ensures the manual job only runs if the 'test' job passes
+    needs: test
     runs-on: ubuntu-latest
-    if: ${{ success() }} # Ensures the job only runs if the 'test' job succeeds
+    if: ${{ success() }}
     steps:
       - name: Manual Step
         run: echo "This is a manual job that can only be triggered manually."
