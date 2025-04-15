@@ -57,6 +57,13 @@ jobs:
           ENVIRONMENT: dev
         run: |
           npx cdk diff --require-approval never --no-asset-metadata --no-change-set
+          npx cdk synth --all --require-approval never --no-asset-metadata --no-change-set
+
+      - name: Synth AWS CDK Stack for Dev
+        env:
+          ENVIRONMENT: dev
+        run: |
+          npx cdk synth --all --require-approval never --no-asset-metadata --no-change-set
 
       - name: Diff AWS CDK Stack for Prod
         env:
@@ -72,6 +79,7 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_REGION: ap-southeast-2
       AWS_DEFAULT_REGION: ap-southeast-2
+      ENVIRONMENT: dev
     needs: test
 
     runs-on: ubuntu-latest
