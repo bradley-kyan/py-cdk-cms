@@ -53,4 +53,4 @@ jobs:
 
       - name: Diff AWS CDK Stacks
         run: |
-          cdk diff --all --ci --require-approval never --no-asset-metadata
+          npx cdk diff --all --ci --require-approval never --no-asset-metadata
