@@ -102,5 +102,5 @@ jobs:
 
       - name: Deploy Using CDK
         run: |
-          cdk bootstrap
-          cdk deploy --all --ci --require-approval never
+          npx cdk bootstrap
+          npx cdk deploy --all --ci --require-approval never
