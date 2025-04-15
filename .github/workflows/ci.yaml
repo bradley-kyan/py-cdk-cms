@@ -71,11 +71,3 @@ jobs:
         run: |
           echo "Prod not implemented yet"
           # npx cdk diff --require-approval never --no-asset-metadata --no-change-set
-
-  manual-job:
-    needs: test
-    runs-on: ubuntu-latest
-    if: ${{ success() }}
-    steps:
-      - name: Manual Step
-        run: echo "This is a manual job that can only be triggered manually."
