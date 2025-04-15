@@ -2,27 +2,39 @@
 import os
 
 import aws_cdk as cdk
+from aws_cdk import App
+from py_cdk_cms import (
+    vpc_stack as VPCStack,
+    ecs_stack as ECSStack,
+    ecr_manager_stack as ECRManagerStack,
+    dynamo_db_stack as DynamoDBStack,
+)
 
-from py_cdk_cms.py_cdk_cms_stack import PyCdkCmsStack
+
+class CMSSite(App):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        env = cdk.Environment(
+            account=os.environ.get("CDK_DEFAULT_ACCOUNT"),
+            region=os.environ.get("CDK_DEFAULT_REGION"),
+        )
+
+        vpc_stack = VPCStack.VPCStack(self, "VPCStack", env=env)
+        vpc = vpc_stack.vpc
+
+        ecr_stack = ECRManagerStack.ECRManagerStack(self, "ECRStack", env=env)
+        ecr_repo = ecr_stack.ecr_repo
+
+        ecs_stack = ECSStack.ECSStack(
+            self, "ECSStack", vpc=vpc, ecr_repository=ecr_repo, env=env
+        )
+        ddb_stack = DynamoDBStack.DynamoDBStack(self, "DynamoDBStack")
+
+        ecs_stack.add_dependency(vpc_stack)
+        ecs_stack.add_dependency(ecr_stack)
+        ddb_stack.add_dependency(ecs_stack)
 
 
-app = cdk.App()
-PyCdkCmsStack(app, "PyCdkCmsStack",
-    # If you don't specify 'env', this stack will be environment-agnostic.
-    # Account/Region-dependent features and context lookups will not work,
-    # but a single synthesized template can be deployed anywhere.
-
-    # Uncomment the next line to specialize this stack for the AWS Account
-    # and Region that are implied by the current CLI configuration.
-
-    #env=cdk.Environment(account=os.getenv('CDK_DEFAULT_ACCOUNT'), region=os.getenv('CDK_DEFAULT_REGION')),
-
-    # Uncomment the next line if you know exactly what Account and Region you
-    # want to deploy the stack to. */
-
-    #env=cdk.Environment(account='123456789012', region='us-east-1'),
-
-    # For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html
-    )
-
+app = CMSSite()
 app.synth()

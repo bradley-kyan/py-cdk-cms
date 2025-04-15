@@ -1,0 +1,10 @@
+---
+extends: default
+
+ignore: |
+  *node_modules*
+  *venv*
+  *tests*
+
+rules:
+  line-length: disable
