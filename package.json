@@ -1,0 +1,29 @@
+{
+  "name": "py-cdk-cms",
+  "version": "1.0.0",
+  "description": "CDK Code for CMS Deployment",
+  "main": "",
+  "directories": {
+    "test": "tests"
+  }, 
+  "scripts": {
+    "synth": "cdk synth",
+    "deploy": "cdk deploy",
+    "deploy:prod": "ENVIRONMENT=prod cdk deploy",
+    "deploy:dev": "ENVIRONMENT=dev cdk deploy",
+    "test": "./test.sh"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bradley-kyan/py-cdk-cms.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/bradley-kyan/py-cdk-cms/issues"
+  },
+  "homepage": "https://github.com/bradley-kyan/py-cdk-cms#readme",
+  "dependencies": {
+    "aws-cdk": "2.x"
+  }
+}
