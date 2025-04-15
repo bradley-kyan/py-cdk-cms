@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - main
+  workflow_dispatch: # Allows manual triggering of the workflow
 
 jobs:
   test:
@@ -14,7 +15,6 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_REGION: ap-southeast-2
       AWS_DEFAULT_REGION: ap-southeast-2
-      ENVIRONMENT: dev
 
     runs-on: ubuntu-latest
     steps:
@@ -51,6 +51,22 @@ jobs:
         run: |
           ./test.sh
 
-      - name: Diff AWS CDK Stacks
+      - name: Diff AWS CDK Stacks For Dev
+        env:
+          ENVIRONMENT: dev
         run: |
           npx cdk diff --require-approval never --no-asset-metadata --no-change-set
+      
+      - name: Diff AWS CDK Stacks For Prod
+        env:
+          ENVIRONMENT: prod
+        run: |
+          npx cdk diff --require-approval never --no-asset-metadata --no-change-set
+    
+  manual-job:
+    needs: test # This ensures the manual job only runs if the 'test' job passes
+    runs-on: ubuntu-latest
+    if: ${{ success() }} # Ensures the job only runs if the 'test' job succeeds
+    steps:
+      - name: Manual Step
+        run: echo "This is a manual job that can only be triggered manually."
