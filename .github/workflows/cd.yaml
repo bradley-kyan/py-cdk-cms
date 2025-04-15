@@ -6,15 +6,6 @@ on:
       - CI Tests
     types:
       - completed
-  workflow_dispatch:
-    inputs:
-      ENVIRONMENT:
-        description: 'Environment to deploy to'
-        required: true
-        default: 'dev'
-        type: choice
-        options:
-          - dev
 
 jobs:
   deploy:
