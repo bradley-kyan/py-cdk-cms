@@ -31,7 +31,7 @@ jobs:
 
       - name: Install NPM dependencies
         run: |
-          npm install
+          npm i -g
 
       - name: Setup Python
         uses: actions/setup-python@v4
