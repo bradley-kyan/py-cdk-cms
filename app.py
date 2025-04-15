@@ -31,7 +31,7 @@ class CMSSite(App):
         )
         ddb_stack = DynamoDBStack.DynamoDBStack(self, "DynamoDBStack")
 
-        ecs_stack.add_dependency(vpc_stack)
+        ecr_stack.add_dependency(vpc_stack)
         ecs_stack.add_dependency(ecr_stack)
         ddb_stack.add_dependency(ecs_stack)
 
