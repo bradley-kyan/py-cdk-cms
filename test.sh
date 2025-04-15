@@ -65,6 +65,10 @@ done < <(find ./ -type f -name "*.sh" \
     -not -path "./tests/*")
 
 echo "----------------------------------------"
+
+# Deactivate virtual environment
+deactivate
+
 # Check if any failures occurred
 if [[ ${failure_flag} -ne 0 ]]; then
     echo "One or more checks failed."
@@ -73,6 +77,3 @@ else
     echo "All checks passed successfully."
     exit 0
 fi
-
-# Deactivate virtual environment
-deactivate
