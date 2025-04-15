@@ -27,8 +27,6 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    environment:
-      name: ${{ github.event.inputs.environment }}
     if: ${{ github.event.inputs.environment == 'Dev-Test' }}
 
     steps:
@@ -85,10 +83,9 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_REGION: ap-southeast-2
       AWS_DEFAULT_REGION: ap-southeast-2
+    needs: test
 
-    environment:
-      name: ${{ github.event.inputs.environment }}
-    if: ${{ github.event.inputs.environment == 'Dev-Deploy' }}
+    if: ${{ github.event.inputs.environment != 'Dev-Deploy' }}
 
     runs-on: ubuntu-latest
     steps:
