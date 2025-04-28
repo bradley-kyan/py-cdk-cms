@@ -64,6 +64,7 @@ jobs:
         env:
           ENVIRONMENT: dev
         run: |
+          unset AWS_CREDENTIAL_EXPIRATION
           npx cdk diff --require-approval never --no-asset-metadata --no-change-set
 
       - name: Synth AWS CDK Stack for Dev
@@ -125,5 +126,6 @@ jobs:
 
       - name: Deploy Using CDK
         run: |
+          unset AWS_CREDENTIAL_EXPIRATION
           npx cdk bootstrap
           npx cdk deploy --all --ci --require-approval never
