@@ -56,10 +56,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Try to remove old CDK cache
-        run: |
-          rm ~/.aws/credentials
-          
       - name: Run Tests
         run: |
           ./test.sh
@@ -127,10 +123,6 @@ jobs:
           python3 -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Try to remove old CDK cache
-        run: |
-          rm ~/.aws/credentials
-      
       - name: Deploy Using CDK
         run: |
           npx cdk bootstrap
