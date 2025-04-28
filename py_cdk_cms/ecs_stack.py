@@ -11,6 +11,7 @@ import aws_cdk as cdk
 import os
 import logging
 import boto3
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,8 @@ class ECSStack(Stack):
 
         # Create ECS Cluster
         cluster = ecs.Cluster(self, "CMSCluster", vpc=vpc)
+
+        cluster.enable_fargate_capacity_providers()
 
         # Security Group for the Fargate
         fargate_service_sg = ec2.SecurityGroup(
@@ -47,35 +50,58 @@ class ECSStack(Stack):
             allow_all_outbound=True,
         )
 
-        # Allow inbound traffic to ALB
+        # Allow inbound HTTP traffic to ALB
         alb_security_group.add_ingress_rule(
             peer=ec2.Peer.any_ipv4(),
             connection=ec2.Port.tcp(80),
             description="Allow HTTP traffic from internet",
         )
+        # # Allow inbound HTTPS traffic to ALB
+        # alb_security_group.add_ingress_rule(
+        #     peer=ec2.Peer.any_ipv4(),
+        #     connection=ec2.Port.tcp(443),
+        #     description="Allow HTTPS traffic from internet",
+        # )
 
         # Allow ALB to communicate with Fargate service
         fargate_service_sg.add_ingress_rule(
             peer=alb_security_group,
             connection=ec2.Port.tcp(80),
-            description="Allow traffic from ALB",
+            description="Allow HTTP traffic from ALB",
         )
 
-        # Add HTTPS traffic if needed
-        alb_security_group.add_ingress_rule(
-            peer=ec2.Peer.any_ipv4(),
-            connection=ec2.Port.tcp(443),
-            description="Allow HTTPS traffic from internet",
+        # # Add HTTPS traffic if needed
+        # fargate_service_sg.add_ingress_rule(
+        #     peer=alb_security_group,
+        #     connection=ec2.Port.tcp(443),
+        #     description="Allow HTTPS traffic from internet",
+        # )
+
+        # Allow fargate service to communicate with RDS
+        fargate_service_sg.add_ingress_rule(
+            peer=ec2.Peer.ipv4(vpc.vpc_cidr_block),
+            connection=ec2.Port.tcp(3306),
+            description="Allow MySQL traffic from Fargate service",
         )
 
         # Try get the image from ECR
-        if not self.container_image_exists(ecr_repository):
-            logger.info("Image not found in ECR. Not creating a new contianer")
-            return None
+        image_url = os.environ.get("PUBLIC_IMAGE_URL")
+        logger.info(f"Image URL: {image_url}")
+        print(f"Image URL: {image_url}")
 
-        container_image = ecs.ContainerImage.from_ecr_repository(
-            ecr_repository, "latest"
-        )
+        if image_url is not None:
+            logger.info("Image not found in ECR. Creating a new container")
+            print("Image not found in ECR. Creating a new container")
+            container_image = ecs.ContainerImage.from_registry(image_url)
+        elif self.container_image_exists(ecr_repository):
+            logger.info("Image found in ECR. Creating a new contianer")
+            print("Image found in ECR. Creating a new container")
+            container_image = ecs.ContainerImage.from_ecr_repository(
+                ecr_repository, "latest"
+            )
+        else:
+            logger.error("Image not found in ECR. Please build and push the image.")
+            raise Exception("Image not found in ECR. Please build and push the image.")
 
         # Create Fargate Task Definition
         task_definition = ecs.FargateTaskDefinition(
@@ -88,16 +114,36 @@ class ECSStack(Stack):
         # Grant ecs permissions to pull images from ECR
         ecr_repository.grant_pull(task_definition.task_role)
 
+        # Get the secret value
+        secret = self.get_secret_value()
+
+        # Create container environment variables
+        if secret:
+            container_envs = {
+                "WORDPRESS_DB_HOST": secret["host"],
+                "WORDPRESS_DB_USER": secret["username"],
+                "WORDPRESS_DB_PASSWORD": secret["password"],
+                "WORDPRESS_DB_NAME": secret["dbname"],
+            }
+        else:
+            logger.error("Failed to get database credentials")
+            return
+
         # Add container to task def
         container = task_definition.add_container(
             "CMSContainer",
             image=container_image,
-            logging=ecs.LogDrivers.aws_logs(stream_prefix="cms-container"),
-            environment={"ENVIRONMENT": f"{os.environ.get('ENVIRONMENT')}"},
+            container_name="cms_container",
+            environment={
+                key: value for key, value in container_envs.items() if value is not None
+            },
         )
 
         # Add port mapping
-        container.add_port_mappings(ecs.PortMapping(container_port=80))
+        container.add_port_mappings(
+            ecs.PortMapping(container_port=80),
+            ecs.PortMapping(container_port=3306),
+        )
 
         # Create ALB
         alb = elbv2.ApplicationLoadBalancer(
@@ -115,11 +161,36 @@ class ECSStack(Stack):
             cluster=cluster,
             task_definition=task_definition,
             security_groups=[fargate_service_sg],
-            desired_count=2,
+            desired_count=1,
             vpc_subnets=ec2.SubnetSelection(
-                subnet_type=ec2.SubnetType.PRIVATE_WITH_NAT
+                subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS,
             ),
+            min_healthy_percent=95,
             assign_public_ip=False,
+            capacity_provider_strategies=[
+                ecs.CapacityProviderStrategy(
+                    capacity_provider="FARGATE_SPOT", weight=1
+                ),
+            ],
+        )
+
+        # Allow our fargate service to scale
+        scalable_target = fargate_service.auto_scale_task_count(
+            min_capacity=0,
+            max_capacity=2,
+        )
+        
+        scalable_target.scale_on_cpu_utilization(
+            "CpuScaling",
+            target_utilization_percent=95,
+            scale_in_cooldown=cdk.Duration.seconds(60),
+            scale_out_cooldown=cdk.Duration.seconds(60),
+        )
+        scalable_target.scale_on_memory_utilization(
+            "MemoryScaling",
+            target_utilization_percent=95,
+            scale_in_cooldown=cdk.Duration.seconds(60),
+            scale_out_cooldown=cdk.Duration.seconds(60),
         )
 
         # Create ALB Target Group
@@ -131,39 +202,19 @@ class ECSStack(Stack):
             protocol=elbv2.ApplicationProtocol.HTTP,
             target_type=elbv2.TargetType.IP,
             # Health check needs to be implemented with the cms
-            # health_check=elbv2.HealthCheck(
-            #     path="/health",
-            #     healthy_http_codes="200-299",
-            #     interval=cdk.Duration.seconds(60),
-            #     timeout=cdk.Duration.seconds(5)
-            # )
+            health_check=elbv2.HealthCheck(
+                path="/",
+                healthy_http_codes="200-302",
+                interval=cdk.Duration.seconds(60),
+                timeout=cdk.Duration.seconds(5),
+            ),
         )
 
         # Add listener to ALB
-        alb.add_listener(
-            "Listener", port=80, default_target_groups=[target_group]
-        )
+        alb.add_listener("Listener-HTTP", port=80, default_target_groups=[target_group])
 
         # Associate Fargate Service with Target Group
         fargate_service.attach_to_application_target_group(target_group)
-
-        # Add auto-scaling
-        scaling = fargate_service.auto_scale_task_count(max_capacity=3, min_capacity=1)
-
-        scaling.scale_on_cpu_utilization(
-            "CpuScaling",
-            target_utilization_percent=70,
-            scale_in_cooldown=cdk.Duration.seconds(60),
-            scale_out_cooldown=cdk.Duration.seconds(60),
-        )
-
-        # Optional: Add scaling based on memory utilization
-        scaling.scale_on_memory_utilization(
-            "MemoryScaling",
-            target_utilization_percent=70,
-            scale_in_cooldown=cdk.Duration.seconds(60),
-            scale_out_cooldown=cdk.Duration.seconds(60),
-        )
 
         # Add CloudFormation outputs
         CfnOutput(
@@ -203,3 +254,15 @@ class ECSStack(Stack):
         except Exception as e:
             logger.error(f"Error checking image in ECR: {e}")
             return False
+
+    def get_secret_value(self):
+        """Get secret value using the secret ARN from RDS stack"""
+        secrets_manager_client = boto3.client("secretsmanager")
+        try:
+            response = secrets_manager_client.get_secret_value(SecretId="cms")
+            if "SecretString" in response:
+                return json.loads(response["SecretString"])
+            logger.error("No SecretString found in response")
+            return None
+        except Exception as e:
+            logger.error(f"Error fetching secret: {e}")
