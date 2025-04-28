@@ -88,6 +88,8 @@ jobs:
     needs: test
 
     runs-on: ubuntu-latest
+    environment: Development
+
     steps:
       - uses: actions/checkout@v4
         with:
