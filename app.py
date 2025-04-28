@@ -8,11 +8,9 @@ from py_cdk_cms import (
     ecs_stack as ECSStack,
     rds_stack as RDSStack,
     ecr_manager_stack as ECRManagerStack,
-    dynamo_db_stack as DynamoDBStack,
+    #dynamo_db_stack as DynamoDBStack,
 )
 
-import boto3
-import json
 from dotenv import load_dotenv
 import logging
 

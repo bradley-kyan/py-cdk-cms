@@ -26,10 +26,12 @@ class ECSStack(Stack):
         **kwargs,
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
-        
+
         # Create ECS Cluster
         cluster = ecs.Cluster(self, "CMSCluster", vpc=vpc)
-        
+
+        cluster.enable_fargate_capacity_providers()
+
         # Security Group for the Fargate
         fargate_service_sg = ec2.SecurityGroup(
             self,
@@ -85,12 +87,15 @@ class ECSStack(Stack):
         # Try get the image from ECR
         image_url = os.environ.get("PUBLIC_IMAGE_URL")
         logger.info(f"Image URL: {image_url}")
+        print(f"Image URL: {image_url}")
 
         if image_url is not None:
             logger.info("Image not found in ECR. Creating a new container")
+            print("Image not found in ECR. Creating a new container")
             container_image = ecs.ContainerImage.from_registry(image_url)
         elif self.container_image_exists(ecr_repository):
             logger.info("Image found in ECR. Creating a new contianer")
+            print("Image found in ECR. Creating a new container")
             container_image = ecs.ContainerImage.from_ecr_repository(
                 ecr_repository, "latest"
             )
@@ -123,16 +128,14 @@ class ECSStack(Stack):
         else:
             logger.error("Failed to get database credentials")
             return
-        
+
         # Add container to task def
         container = task_definition.add_container(
             "CMSContainer",
             image=container_image,
             container_name="cms_container",
             environment={
-                key: value
-                for key, value in container_envs.items()
-                if value is not None
+                key: value for key, value in container_envs.items() if value is not None
             },
         )
 
@@ -164,6 +167,30 @@ class ECSStack(Stack):
             ),
             min_healthy_percent=95,
             assign_public_ip=False,
+            capacity_provider_strategies=[
+                ecs.CapacityProviderStrategy(
+                    capacity_provider="FARGATE_SPOT", weight=1
+                ),
+            ],
+        )
+
+        # Allow our fargate service to scale
+        scalable_target = fargate_service.auto_scale_task_count(
+            min_capacity=0,
+            max_capacity=2,
+        )
+        
+        scalable_target.scale_on_cpu_utilization(
+            "CpuScaling",
+            target_utilization_percent=95,
+            scale_in_cooldown=cdk.Duration.seconds(60),
+            scale_out_cooldown=cdk.Duration.seconds(60),
+        )
+        scalable_target.scale_on_memory_utilization(
+            "MemoryScaling",
+            target_utilization_percent=95,
+            scale_in_cooldown=cdk.Duration.seconds(60),
+            scale_out_cooldown=cdk.Duration.seconds(60),
         )
 
         # Create ALB Target Group
@@ -188,24 +215,6 @@ class ECSStack(Stack):
 
         # Associate Fargate Service with Target Group
         fargate_service.attach_to_application_target_group(target_group)
-
-        # Add auto-scaling
-        scaling = fargate_service.auto_scale_task_count(max_capacity=3, min_capacity=1)
-
-        scaling.scale_on_cpu_utilization(
-            "CpuScaling",
-            target_utilization_percent=70,
-            scale_in_cooldown=cdk.Duration.seconds(60),
-            scale_out_cooldown=cdk.Duration.seconds(60),
-        )
-
-        # Optional: Add scaling based on memory utilization
-        scaling.scale_on_memory_utilization(
-            "MemoryScaling",
-            target_utilization_percent=70,
-            scale_in_cooldown=cdk.Duration.seconds(60),
-            scale_out_cooldown=cdk.Duration.seconds(60),
-        )
 
         # Add CloudFormation outputs
         CfnOutput(
@@ -250,9 +259,7 @@ class ECSStack(Stack):
         """Get secret value using the secret ARN from RDS stack"""
         secrets_manager_client = boto3.client("secretsmanager")
         try:
-            response = secrets_manager_client.get_secret_value(
-                SecretId="cms"
-            )
+            response = secrets_manager_client.get_secret_value(SecretId="cms")
             if "SecretString" in response:
                 return json.loads(response["SecretString"])
             logger.error("No SecretString found in response")
