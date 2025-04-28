@@ -1,0 +1,17 @@
+---
+name: Deploy to Production
+on:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  deploy-prod:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Not Implemented
+        run: |
+          echo "This workflow is not implemented yet for prod deployments."
+          exit 0

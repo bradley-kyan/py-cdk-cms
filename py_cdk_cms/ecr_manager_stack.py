@@ -45,10 +45,13 @@ class ECRManagerStack(Stack):
 
         return repo
 
-    def add_docker_image_to_ecr(
+    def build_docker_image_to_ecr(
         self, directory_path: str, build_args: dict
     ) -> ecr_assets.DockerImageAsset:
         self.docker_image = ecr_assets.DockerImageAsset(
-            self, "cms_docker_image", directory=directory_path, build_args=build_args
+            self,
+            "cms_docker_image",
+            directory=directory_path,
+            build_args=build_args,
         )
         return self.docker_image
