@@ -29,7 +29,7 @@ failure_flag=0
 # Run bandit
 echo -e "----------------------------------------${PINK}"
 echo -e "Running bandit...${NC}"
-bandit -c pyproject.toml -r .
+bandit -c pyproject.toml -r . -ll
 if [[ $? -ne 0 ]]; then
     echo -e "${RED}Bandit check failed.${NC}"
     failure_flag=1
