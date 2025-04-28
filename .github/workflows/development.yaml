@@ -21,6 +21,10 @@ jobs:
     runs-on: ubuntu-latest
     environment: Development
 
+    concurrency:
+      group: dev-test
+      cancel-in-progress: true
+
     if: ${{ github.event.inputs.aws_environment == 'Dev-Deploy' || github.event_name == 'pull_request' }}
     steps:
       - uses: actions/checkout@v4
@@ -89,6 +93,10 @@ jobs:
 
     runs-on: ubuntu-latest
     environment: Development
+
+    concurrency:
+      group: dev-deploy
+      cancel-in-progress: true
 
     steps:
       - uses: actions/checkout@v4
