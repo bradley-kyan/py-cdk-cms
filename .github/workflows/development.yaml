@@ -2,15 +2,6 @@
 run-name: AWS Dev Stack
 on:
   workflow_dispatch:
-    inputs:
-      aws_environment:
-        type: choice
-        description: 'Environment to deploy to'
-        required: true
-        default: 'Dev-Test'
-        options:
-          - Dev-Test
-          - Dev-Deploy
   pull_request:
     branches:
       - master
@@ -22,11 +13,19 @@ jobs:
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
       AWS_REGION: ap-southeast-2
       AWS_DEFAULT_REGION: ap-southeast-2
+      PUBLIC_IMAGE_URL: ${{ vars.PUBLIC_IMAGE_URL }}
 
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.aws_environment == 'Dev-Test' || github.event_name == 'pull_request' }}
+    environment: Development
+
+    concurrency:
+      group: dev-test
+      cancel-in-progress: true
+
+    if: ${{ github.event.inputs.aws_environment == 'Dev-Deploy' || github.event_name == 'pull_request' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -67,6 +66,12 @@ jobs:
         run: |
           npx cdk diff --require-approval never --no-asset-metadata --no-change-set
 
+      - name: Synth AWS CDK Stack for Dev
+        env:
+          ENVIRONMENT: dev
+        run: |
+          npx cdk synth --all --require-approval never --no-asset-metadata --no-change-set
+
       - name: Diff AWS CDK Stack for Prod
         env:
           ENVIRONMENT: prod
@@ -74,18 +79,25 @@ jobs:
           echo "Prod not implemented yet"
           # npx cdk diff --require-approval never --no-asset-metadata --no-change-set
 
-  deploy:
+  deploy-dev:
     permissions: write-all
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
       AWS_REGION: ap-southeast-2
       AWS_DEFAULT_REGION: ap-southeast-2
+      ENVIRONMENT: dev
+      PUBLIC_IMAGE_URL: ${{ vars.PUBLIC_IMAGE_URL }}
     needs: test
 
-    if: ${{ github.event.inputs.aws_environment == 'Dev-Deploy' }}
-
     runs-on: ubuntu-latest
+    environment: Development
+
+    concurrency:
+      group: dev-deploy
+      cancel-in-progress: true
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -113,5 +125,5 @@ jobs:
 
       - name: Deploy Using CDK
         run: |
-          cdk bootstrap
-          cdk deploy --all --ci --require-approval never
+          npx cdk bootstrap
+          npx cdk deploy --all --ci --require-approval never

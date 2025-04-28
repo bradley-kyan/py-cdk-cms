@@ -6,9 +6,17 @@ from aws_cdk import App
 from py_cdk_cms import (
     vpc_stack as VPCStack,
     ecs_stack as ECSStack,
+    rds_stack as RDSStack,
     ecr_manager_stack as ECRManagerStack,
-    dynamo_db_stack as DynamoDBStack,
+    #dynamo_db_stack as DynamoDBStack,
 )
+
+from dotenv import load_dotenv
+import logging
+
+load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 
 class CMSSite(App):
@@ -26,15 +34,26 @@ class CMSSite(App):
         ecr_stack = ECRManagerStack.ECRManagerStack(self, "ECRStack", env=env)
         ecr_repo = ecr_stack.ecr_repo
 
-        ecs_stack = ECSStack.ECSStack(
-            self, "ECSStack", vpc=vpc, ecr_repository=ecr_repo, env=env
-        )
-        ddb_stack = DynamoDBStack.DynamoDBStack(self, "DynamoDBStack")
+        rds_stack = RDSStack.RDSStack(self, "RDSStack", vpc=vpc, env=env)
 
-        ecs_stack.add_dependency(vpc_stack)
+        # Create ECS stack with the container environments
+        ecs_stack = ECSStack.ECSStack(
+            self,
+            "ECSStack",
+            vpc=vpc,
+            ecr_repository=ecr_repo,
+            env=env,
+        )
+
+        # ddb_stack = DynamoDBStack.DynamoDBStack(self, "DynamoDBStack")
+
+        ecr_stack.add_dependency(vpc_stack)
+        rds_stack.add_dependency(vpc_stack)
+        ecs_stack.add_dependency(rds_stack)
         ecs_stack.add_dependency(ecr_stack)
-        ddb_stack.add_dependency(ecs_stack)
+        # ddb_stack.add_dependency(ecs_stack)
 
 
 app = CMSSite()
+
 app.synth()
