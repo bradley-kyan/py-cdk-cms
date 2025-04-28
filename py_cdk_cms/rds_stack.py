@@ -10,8 +10,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class RDSStack(Stack):
-    def __init__(self, scope: Construct, construct_id: str, vpc: ec2.Vpc, **kwargs) -> None:
+    def __init__(
+        self, scope: Construct, construct_id: str, vpc: ec2.Vpc, **kwargs
+    ) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
         vpc = vpc
@@ -25,15 +28,15 @@ class RDSStack(Stack):
         rds_security_group.add_ingress_rule(
             peer=ec2.Peer.ipv4(vpc.vpc_cidr_block),
             connection=ec2.Port.MYSQL_AURORA,
-            description="Allow MySQL access from within VPC"
+            description="Allow MySQL access from within VPC",
         )
-        
+
         rds_security_group.add_egress_rule(
             peer=ec2.Peer.ipv4(vpc.vpc_cidr_block),
             connection=ec2.Port.MYSQL_AURORA,
-            description="Allow MySQL to only access the VPC"
+            description="Allow MySQL to only access the VPC",
         )
-        
+
         # Create the Aurora RDS instance
         self.rds_instance = rds.DatabaseCluster(
             self,
@@ -52,14 +55,22 @@ class RDSStack(Stack):
             },
             storage_encrypted=True,
             cluster_identifier="cms-cluster",
-            deletion_protection=False,
+            deletion_protection=True,
             serverless_v2_min_capacity=0,
-            serverless_v2_max_capacity=2,
-            writer=rds.ClusterInstance.serverless_v2("writer", instance_identifier="writer"),
+            serverless_v2_max_capacity=1,
+            writer=rds.ClusterInstance.serverless_v2(
+                "writer", instance_identifier="writer"
+            ),
             readers=[
-                rds.ClusterInstance.serverless_v2("reader", scale_with_writer=True, instance_identifier="reader"),
+                rds.ClusterInstance.serverless_v2(
+                    "reader", scale_with_writer=True, instance_identifier="reader"
+                ),
             ],
-            cloudwatch_logs_exports=["audit", "error", "slowquery"], # DONT INCLUDE GENERAL... DONT MAKE THAT MISTAKE AGAIN!
+            cloudwatch_logs_exports=[
+                # "audit",
+                "error",
+                # "slowquery",
+            ],  # DONT INCLUDE GENERAL... DONT MAKE THAT MISTAKE AGAIN!
         )
 
         cdk.CfnOutput(
